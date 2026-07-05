@@ -9,7 +9,7 @@ dashboard.html completamente autónomo (no necesita servidor web).
 import sys
 import os
 import json
-import re
+import base64
 from xml.etree import ElementTree as ET
 from datetime import datetime
 
@@ -171,18 +171,17 @@ def main():
     with open(TEMPLATE_HTML, encoding="utf-8") as f:
         html = f.read()
 
-    # Serializar los datos como JSON.
-    # IMPORTANTE: escapar '</' como '<\/' para que el parser HTML
-    # no interprete secuencias como '</script>' o '</div>' dentro
-    # del bloque <script> como cierres de etiqueta. Esto es seguro:
-    # '<\/' es JSON válido y JavaScript lo interpreta como '</'.
-    json_str = json.dumps(report_data, ensure_ascii=False, indent=2)
-    json_str = json_str.replace("</", "<\\/")
+    # Serializar y codificar en Base64.
+    # Esto garantiza que el bloque <script> solo contiene caracteres
+    # alfanuméricos + '+', '/', '=' → imposible que el parser HTML lo
+    # corte. JavaScript decodifica con atob() y parsea con JSON.parse().
+    json_str = json.dumps(report_data, ensure_ascii=False)
+    json_b64 = base64.b64encode(json_str.encode("utf-8")).decode("ascii")
 
     data_script = (
         "\n<script>\n"
-        "// Datos embebidos por generate_dashboard.py durante el CI\n"
-        f"window.REPORT_DATA = {json_str};\n"
+        "// Datos embebidos por generate_dashboard.py (Base64 → JSON.parse)\n"
+        f"window.REPORT_DATA = JSON.parse(atob('{json_b64}'));\n"
         "</script>\n"
     )
     html = html.replace("</head>", data_script + "</head>", 1)
@@ -193,7 +192,8 @@ def main():
         f.write(html)
 
     size_kb = os.path.getsize(OUTPUT_HTML) / 1024
-    print(f"  => Dashboard autónomo escrito en {OUTPUT_HTML} ({size_kb:.1f} KB)")
+    b64_kb  = len(json_b64) / 1024
+    print(f"  => Dashboard autónomo: {OUTPUT_HTML} ({size_kb:.1f} KB total, {b64_kb:.1f} KB datos)")
 
 if __name__ == "__main__":
     main()
