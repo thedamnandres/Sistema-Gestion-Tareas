@@ -171,11 +171,18 @@ def main():
     with open(TEMPLATE_HTML, encoding="utf-8") as f:
         html = f.read()
 
-    # Inyectar bloque de datos antes del </head>
+    # Serializar los datos como JSON.
+    # IMPORTANTE: escapar '</' como '<\/' para que el parser HTML
+    # no interprete secuencias como '</script>' o '</div>' dentro
+    # del bloque <script> como cierres de etiqueta. Esto es seguro:
+    # '<\/' es JSON válido y JavaScript lo interpreta como '</'.
+    json_str = json.dumps(report_data, ensure_ascii=False, indent=2)
+    json_str = json_str.replace("</", "<\\/")
+
     data_script = (
         "\n<script>\n"
         "// Datos embebidos por generate_dashboard.py durante el CI\n"
-        f"window.REPORT_DATA = {json.dumps(report_data, ensure_ascii=False, indent=2)};\n"
+        f"window.REPORT_DATA = {json_str};\n"
         "</script>\n"
     )
     html = html.replace("</head>", data_script + "</head>", 1)
@@ -185,7 +192,8 @@ def main():
     with open(OUTPUT_HTML, "w", encoding="utf-8") as f:
         f.write(html)
 
-    print(f"  => Dashboard autónomo escrito en {OUTPUT_HTML}")
+    size_kb = os.path.getsize(OUTPUT_HTML) / 1024
+    print(f"  => Dashboard autónomo escrito en {OUTPUT_HTML} ({size_kb:.1f} KB)")
 
 if __name__ == "__main__":
     main()
