@@ -656,7 +656,6 @@ function switchTab(id) {
   if (btn) btn.classList.add('active');
   if (sec) sec.classList.add('active');
 }
-
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
@@ -664,239 +663,168 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // ── Helpers ────────────────────────────────────────────────────
 function shortName(path) {
   if (!path) return '–';
-  const parts = path.replace(/\\/g, '/').split('/');
-  return parts[parts.length - 1];
+  return path.replace(/\\/g, '/').split('/').pop();
 }
-
 function pct(covered, missed) {
   const total = covered + missed;
-  if (total === 0) return 100;
-  return Math.round((covered / total) * 100);
+  return total === 0 ? 100 : Math.round((covered / total) * 100);
 }
-
 function coverageClass(p) {
-  if (p >= 80) return '';
-  if (p >= 50) return 'med';
-  return 'low';
+  return p >= 80 ? '' : p >= 50 ? 'med' : 'low';
 }
-
 function filterTable(tbodyId, query) {
   const q = query.toLowerCase();
-  const rows = document.querySelectorAll(`#${tbodyId} tr`);
-  rows.forEach(row => {
+  document.querySelectorAll(`#${tbodyId} tr`).forEach(row => {
     row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
   });
 }
-
 function updateBadge(id, count, colorClass) {
   const el = document.getElementById(id);
   if (!el) return;
   el.textContent = count;
   el.className = 'tab-badge ' + colorClass;
 }
-
-// ── Fetch helpers (modo servidor / Pages) ─────────────────────
 async function fetchXml(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const text = await res.text();
-  return new DOMParser().parseFromString(text, 'application/xml');
+  return new DOMParser().parseFromString(await res.text(), 'application/xml');
 }
-
 async function fetchText(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
 }
-
-// ── No-data helpers ────────────────────────────────────────────
-function noDataRow(cols, label = 'No se encontraron datos') {
-  return `<tr><td colspan="${cols}">
-    <div class="state-box">
-      <span class="icon-lg">✅</span>
-      <p>${label}</p>
-    </div>
-  </td></tr>`;
+function noDataRow(cols, label) {
+  return `<tr><td colspan="${cols}"><div class="state-box">
+    <span class="icon-lg">✅</span><p>${label}</p></div></td></tr>`;
 }
-
 function errorRow(cols, url) {
-  return `<tr><td colspan="${cols}">
-    <div class="state-box">
-      <span class="icon-lg">📭</span>
-      <p>No se pudo cargar el reporte <code>${url}</code>.<br/>
-         Este archivo se genera en cada ejecución del CI.</p>
-    </div>
-  </td></tr>`;
+  return `<tr><td colspan="${cols}"><div class="state-box">
+    <span class="icon-lg">📭</span>
+    <p>No se pudo cargar <code>${url}</code>. Se genera en cada CI.</p>
+  </div></td></tr>`;
 }
 
 // ══════════════════════════════════════════════════════════════
-// MODO EMBEBIDO: usa window.REPORT_DATA si fue inyectado por el CI
-// MODO FETCH:    descarga los XML desde la misma ruta (servidor / Pages)
+// RENDERIZADORES COMPARTIDOS
 // ══════════════════════════════════════════════════════════════
-
-// ── Renderizadores compartidos ─────────────────────────────────
 
 function renderCheckstyle(rows) {
-  const tbody   = document.getElementById('cs-tbody');
-  const countEl = document.getElementById('cs-count');
-  const count   = rows.length;
+  var tbody = document.getElementById('cs-tbody');
+  var count = rows.length;
   document.getElementById('sum-checkstyle').textContent = count;
-  countEl.textContent = `${count} violación${count !== 1 ? 'es' : ''}`;
+  document.getElementById('cs-count').textContent = count + ' violaci\u00f3n' + (count !== 1 ? 'es' : '');
   updateBadge('badge-checkstyle', count, count === 0 ? 'ok' : count < 20 ? 'warn' : 'err');
-  if (count === 0) {
-    tbody.innerHTML = noDataRow(5, '✅ Sin violaciones de Checkstyle');
-    return;
-  }
-  tbody.innerHTML = rows.map(r => `
-    <tr>
-      <td>${r.file}</td>
-      <td>${r.line}</td>
-      <td>${r.col}</td>
-      <td><span class="pill pill-3">${r.rule}</span></td>
-      <td class="td-message">${r.message || r.msg}</td>
-    </tr>
-  `).join('');
+  if (count === 0) { tbody.innerHTML = noDataRow(5, '\u2705 Sin violaciones de Checkstyle'); return; }
+  tbody.innerHTML = rows.map(function(r) {
+    return '<tr><td>' + r.file + '</td><td>' + r.line + '</td><td>' + (r.col || '-') + '</td>' +
+      '<td><span class="pill pill-3">' + r.rule + '</span></td>' +
+      '<td class="td-message">' + r.message + '</td></tr>';
+  }).join('');
 }
 
 function renderPmd(rows) {
-  const tbody   = document.getElementById('pmd-tbody');
-  const countEl = document.getElementById('pmd-count');
-  const count   = rows.length;
+  var tbody = document.getElementById('pmd-tbody');
+  var count = rows.length;
   document.getElementById('sum-pmd').textContent = count;
-  countEl.textContent = `${count} violación${count !== 1 ? 'es' : ''}`;
+  document.getElementById('pmd-count').textContent = count + ' violaci\u00f3n' + (count !== 1 ? 'es' : '');
   updateBadge('badge-pmd', count, count === 0 ? 'ok' : count < 10 ? 'warn' : 'err');
-  if (count === 0) {
-    tbody.innerHTML = noDataRow(5, '✅ Sin violaciones de PMD');
-    return;
-  }
-  tbody.innerHTML = rows.map(r => `
-    <tr>
-      <td>${r.file}</td>
-      <td>${r.line}</td>
-      <td><span class="pill pill-${r.priority}">P${r.priority}</span></td>
-      <td><span class="pill pill-3">${r.rule}</span></td>
-      <td class="td-message">${r.message || r.msg}</td>
-    </tr>
-  `).join('');
+  if (count === 0) { tbody.innerHTML = noDataRow(5, '\u2705 Sin violaciones de PMD'); return; }
+  tbody.innerHTML = rows.map(function(r) {
+    return '<tr><td>' + r.file + '</td><td>' + r.line + '</td>' +
+      '<td><span class="pill pill-' + r.priority + '">P' + r.priority + '</span></td>' +
+      '<td><span class="pill pill-3">' + r.rule + '</span></td>' +
+      '<td class="td-message">' + r.message + '</td></tr>';
+  }).join('');
 }
 
 function renderSpotbugs(bugs) {
-  const wrapper = document.getElementById('spotbugs-wrapper');
-  const count   = bugs.length;
+  var wrapper = document.getElementById('spotbugs-wrapper');
+  var count = bugs.length;
   document.getElementById('sum-spotbugs').textContent = count;
-  document.getElementById('sub-spotbugs').textContent = count === 0 ? 'sin bugs detectados ✅' : 'bugs de bytecode';
+  document.getElementById('sub-spotbugs').textContent = count === 0 ? 'sin bugs detectados \u2705' : 'bugs de bytecode';
   updateBadge('badge-spotbugs', count, count === 0 ? 'ok' : 'err');
   if (count === 0) {
-    wrapper.innerHTML = `
-      <div class="state-box">
-        <span class="icon-lg">🎉</span>
-        <p><strong>¡Sin bugs de bytecode!</strong><br/>SpotBugs no encontró problemas en el código compilado.</p>
-      </div>`;
+    wrapper.innerHTML = '<div class="state-box"><span class="icon-lg">\ud83c\udf89</span>' +
+      '<p><strong>Sin bugs de bytecode!</strong><br>SpotBugs no encontr\u00f3 problemas.</p></div>';
     return;
   }
-  wrapper.innerHTML = `
-    <div class="table-toolbar">
-      <span class="table-title">${count} bug${count !== 1 ? 's' : ''} encontrado${count !== 1 ? 's' : ''}</span>
-      <input type="search" class="search-input" placeholder="Buscar…" oninput="filterTable('sb-tbody', this.value)" />
-    </div>
-    <div style="overflow-x:auto">
-      <table>
-        <thead>
-          <tr>
-            <th>Tipo</th><th>Categoría</th><th>Prioridad</th>
-            <th>Clase</th><th>Método</th><th>Línea</th>
-          </tr>
-        </thead>
-        <tbody id="sb-tbody">
-          ${bugs.map(r => `
-            <tr>
-              <td class="td-message">${r.type}</td>
-              <td>${r.category}</td>
-              <td><span class="pill pill-${r.priority}">${r.priority}</span></td>
-              <td>${(r.cls||'–').split('.').pop()}</td>
-              <td>${r.method}</td>
-              <td>${r.line}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>`;
+  var rows = bugs.map(function(r) {
+    return '<tr><td class="td-message">' + r.type + '</td><td>' + r.category + '</td>' +
+      '<td><span class="pill pill-' + r.priority + '">' + r.priority + '</span></td>' +
+      '<td>' + (r.cls || '-').split('.').pop() + '</td>' +
+      '<td>' + r.method + '</td><td>' + r.line + '</td></tr>';
+  }).join('');
+  wrapper.innerHTML =
+    '<div class="table-toolbar"><span class="table-title">' + count + ' bug' + (count !== 1 ? 's' : '') + ' encontrado' + (count !== 1 ? 's' : '') + '</span>' +
+    '<input type="search" class="search-input" placeholder="Buscar\u2026" oninput="filterTable(\'sb-tbody\',this.value)"/></div>' +
+    '<div style="overflow-x:auto"><table><thead><tr>' +
+    '<th>Tipo</th><th>Categor\u00eda</th><th>Prioridad</th><th>Clase</th><th>M\u00e9todo</th><th>L\u00ednea</th>' +
+    '</tr></thead><tbody id="sb-tbody">' + rows + '</tbody></table></div>';
 }
 
 function renderJacoco(data, totals, generatedAt) {
-  const instrPct = pct(totals.iCov, totals.iMissed);
-  document.getElementById('sum-jacoco').textContent = `${instrPct}%`;
+  var instrPct = pct(totals.iCov, totals.iMissed);
+  document.getElementById('sum-jacoco').textContent = instrPct + '%';
   document.getElementById('sub-jacoco').textContent =
-    `instrucciones · ${pct(totals.lCov,totals.lMissed)}% líneas · ${pct(totals.bCov,totals.bMissed)}% ramas`;
-  updateBadge('badge-jacoco', `${instrPct}%`, instrPct >= 80 ? 'ok' : instrPct >= 50 ? 'warn' : 'err');
-
-  const barsHtml = data.map(d => {
-    const p   = pct(d.iCov, d.iMissed);
-    const cls = coverageClass(p);
-    return `
-      <div class="coverage-row">
-        <div class="coverage-header">
-          <span class="coverage-class">${d.cls}</span>
-          <span class="coverage-pct" style="color:${cls==='' ? 'var(--green)' : cls==='med' ? 'var(--amber)' : 'var(--red)'}">${p}%</span>
-        </div>
-        <div class="bar-track">
-          <div class="bar-fill ${cls}" data-width="${p}"></div>
-        </div>
-        <div class="coverage-metrics">
-          <span class="metric-chip">Instrucciones: <b>${d.iCov}/${d.iCov+d.iMissed}</b></span>
-          <span class="metric-chip">Ramas: <b>${d.bCov}/${d.bCov+d.bMissed}</b></span>
-          <span class="metric-chip">Líneas: <b>${d.lCov}/${d.lCov+d.lMissed}</b></span>
-          <span class="metric-chip">Métodos: <b>${d.mCov}/${d.mCov+d.mMissed}</b></span>
-        </div>
-      </div>`;
+    'instrucciones \u00b7 ' + pct(totals.lCov, totals.lMissed) + '% l\u00edneas \u00b7 ' + pct(totals.bCov, totals.bMissed) + '% ramas';
+  updateBadge('badge-jacoco', instrPct + '%', instrPct >= 80 ? 'ok' : instrPct >= 50 ? 'warn' : 'err');
+  var barsHtml = data.map(function(d) {
+    var p = pct(d.iCov, d.iMissed);
+    var cls = coverageClass(p);
+    var color = cls === '' ? 'var(--green)' : cls === 'med' ? 'var(--amber)' : 'var(--red)';
+    return '<div class="coverage-row">' +
+      '<div class="coverage-header">' +
+        '<span class="coverage-class">' + d.cls + '</span>' +
+        '<span class="coverage-pct" style="color:' + color + '">' + p + '%</span>' +
+      '</div>' +
+      '<div class="bar-track"><div class="bar-fill ' + cls + '" data-width="' + p + '"></div></div>' +
+      '<div class="coverage-metrics">' +
+        '<span class="metric-chip">Instrucciones: <b>' + d.iCov + '/' + (d.iCov + d.iMissed) + '</b></span>' +
+        '<span class="metric-chip">Ramas: <b>' + d.bCov + '/' + (d.bCov + d.bMissed) + '</b></span>' +
+        '<span class="metric-chip">L\u00edneas: <b>' + d.lCov + '/' + (d.lCov + d.lMissed) + '</b></span>' +
+        '<span class="metric-chip">M\u00e9todos: <b>' + d.mCov + '/' + (d.mCov + d.mMissed) + '</b></span>' +
+      '</div></div>';
   }).join('');
-
   document.getElementById('overview-coverage').innerHTML = barsHtml;
-  document.getElementById('jacoco-bars').innerHTML        = barsHtml;
-
-  setTimeout(() => {
-    document.querySelectorAll('.bar-fill[data-width]').forEach(el => {
+  document.getElementById('jacoco-bars').innerHTML = barsHtml;
+  setTimeout(function() {
+    document.querySelectorAll('.bar-fill[data-width]').forEach(function(el) {
       el.style.width = el.dataset.width + '%';
     });
   }, 100);
-
-  const pillFor = p => `<span class="pill pill-${p>=80?'ok':p>=50?'4':'1'}">${p}%</span>`;
-  document.getElementById('jacoco-tbody').innerHTML = data.map(d => `
-    <tr>
-      <td>${d.cls}</td>
-      <td>${pillFor(pct(d.iCov,d.iMissed))}</td>
-      <td>${pillFor(pct(d.bCov,d.bMissed))}</td>
-      <td>${pillFor(pct(d.lCov,d.lMissed))}</td>
-      <td>${pillFor(pct(d.mCov,d.mMissed))}</td>
-      <td><span class="pill pill-ok">1/1</span></td>
-    </tr>`).join('');
-
-  // Header
-  const ts = generatedAt
-    ? new Date(generatedAt).toLocaleString('es-EC', { dateStyle:'medium', timeStyle:'short' })
-    : new Date().toLocaleString('es-EC', { dateStyle:'medium', timeStyle:'short' });
-  document.getElementById('build-time').textContent = `Último análisis: ${ts}`;
-  document.getElementById('overall-badge').textContent = instrPct >= 80 ? '✅ Cobertura OK' : '⚠️ Cobertura baja';
+  var pillFor = function(p) {
+    return '<span class="pill pill-' + (p >= 80 ? 'ok' : p >= 50 ? '4' : '1') + '">' + p + '%</span>';
+  };
+  document.getElementById('jacoco-tbody').innerHTML = data.map(function(d) {
+    return '<tr><td>' + d.cls + '</td>' +
+      '<td>' + pillFor(pct(d.iCov, d.iMissed)) + '</td>' +
+      '<td>' + pillFor(pct(d.bCov, d.bMissed)) + '</td>' +
+      '<td>' + pillFor(pct(d.lCov, d.lMissed)) + '</td>' +
+      '<td>' + pillFor(pct(d.mCov, d.mMissed)) + '</td>' +
+      '<td><span class="pill pill-ok">1/1</span></td></tr>';
+  }).join('');
+  var ts = generatedAt
+    ? new Date(generatedAt).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })
+    : new Date().toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' });
+  document.getElementById('build-time').textContent = '\u00daltimo an\u00e1lisis: ' + ts;
+  document.getElementById('overall-badge').textContent = instrPct >= 80 ? '\u2705 Cobertura OK' : '\u26a0\ufe0f Cobertura baja';
   document.getElementById('overall-badge').style.color = instrPct >= 80 ? 'var(--green)' : 'var(--amber)';
 }
 
 // ══════════════════════════════════════════════════════════════
-// MODO EMBEBIDO (artifact descargable, window.REPORT_DATA presente)
+// MODO EMBEBIDO  — window.REPORT_DATA inyectado por CI (Base64)
 // ══════════════════════════════════════════════════════════════
+// Nota: En reports/index.html (usado para fetch) esta variable no existe.
+// Sin embargo, cuando generate_dashboard.py genera reports/dashboard.html,
+// inyecta window.REPORT_DATA con la data codificada en base64.
 function loadFromEmbedded(data) {
   try { renderCheckstyle(data.checkstyle || []); }
-  catch (e) {
-    document.getElementById('sum-checkstyle').textContent = '?';
-    document.getElementById('cs-tbody').innerHTML = errorRow(5, 'checkstyle (embebido)');
-  }
+  catch (e) { document.getElementById('sum-checkstyle').textContent = '?'; }
   try { renderPmd(data.pmd || []); }
-  catch (e) {
-    document.getElementById('sum-pmd').textContent = '?';
-    document.getElementById('pmd-tbody').innerHTML = errorRow(5, 'pmd (embebido)');
-  }
+  catch (e) { document.getElementById('sum-pmd').textContent = '?'; }
   try { renderSpotbugs(data.spotbugs || []); }
   catch (e) { document.getElementById('sum-spotbugs').textContent = '?'; }
-
   if (data.jacoco && data.jacoco.length > 0) {
     try { renderJacoco(data.jacoco, data.jacocoTotals, data.generatedAt); }
     catch (e) { document.getElementById('sum-jacoco').textContent = '?'; }
@@ -907,237 +835,117 @@ function loadFromEmbedded(data) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// MODO FETCH (servidor / GitHub Pages)
+// MODO FETCH  — servidor / GitHub Pages
 // ══════════════════════════════════════════════════════════════
 async function loadCheckstyleFromFetch() {
-  const tbody = document.getElementById('cs-tbody');
   try {
-    const xml = await fetchXml('./checkstyle-result.xml');
-    const rows = [];
-    xml.querySelectorAll('file').forEach(file => {
-      const filename = shortName(file.getAttribute('name'));
-      file.querySelectorAll('error').forEach(err => {
-        const source = err.getAttribute('source') || '';
-        rows.push({
-          file:    filename,
-          line:    err.getAttribute('line')   || '–',
-          col:     err.getAttribute('column') || '–',
-          rule:    source.split('.').pop() || '–',
-          message: err.getAttribute('message') || '–',
-        });
+    var xml = await fetchXml('./checkstyle-result.xml');
+    var rows = [];
+    xml.querySelectorAll('file').forEach(function(file) {
+      var filename = shortName(file.getAttribute('name'));
+      file.querySelectorAll('error').forEach(function(err) {
+        var source = err.getAttribute('source') || '';
+        rows.push({ file: filename, line: err.getAttribute('line') || '-',
+          col: err.getAttribute('column') || '-', rule: source.split('.').pop() || '-',
+          message: err.getAttribute('message') || '-' });
       });
     });
     renderCheckstyle(rows);
-  } catch {
+  } catch(e) {
     document.getElementById('sum-checkstyle').textContent = '?';
     updateBadge('badge-checkstyle', '?', '');
-    tbody.innerHTML = errorRow(5, 'checkstyle-result.xml');
+    document.getElementById('cs-tbody').innerHTML = errorRow(5, 'checkstyle-result.xml');
   }
 }
 
 async function loadPmdFromFetch() {
-  const tbody = document.getElementById('pmd-tbody');
   try {
-    const xml = await fetchXml('./pmd.xml');
-    const rows = [];
-    xml.querySelectorAll('file').forEach(file => {
-      const filename = shortName(file.getAttribute('name'));
-      file.querySelectorAll('violation').forEach(v => {
-        rows.push({
-          file:     filename,
-          line:     v.getAttribute('beginline') || '–',
-          priority: v.getAttribute('priority')  || '5',
-          rule:     v.getAttribute('rule')       || '–',
-          message:  (v.textContent || '–').trim(),
-        });
+    var xml = await fetchXml('./pmd.xml');
+    var rows = [];
+    xml.querySelectorAll('file').forEach(function(file) {
+      var filename = shortName(file.getAttribute('name'));
+      file.querySelectorAll('violation').forEach(function(v) {
+        rows.push({ file: filename, line: v.getAttribute('beginline') || '-',
+          priority: v.getAttribute('priority') || '5', rule: v.getAttribute('rule') || '-',
+          message: (v.textContent || '-').trim() });
       });
     });
     renderPmd(rows);
-  } catch {
+  } catch(e) {
     document.getElementById('sum-pmd').textContent = '?';
     updateBadge('badge-pmd', '?', '');
-    tbody.innerHTML = errorRow(5, 'pmd.xml');
+    document.getElementById('pmd-tbody').innerHTML = errorRow(5, 'pmd.xml');
   }
 }
 
-          <span class="icon-lg">🎉</span>
-          <p><strong>¡Sin bugs de bytecode!</strong><br/>SpotBugs no encontró problemas en el código compilado.</p>
-        </div>`;
-      return;
-    }
-
-    const rows = [];
-    bugs.forEach(bug => {
-      const type     = bug.getAttribute('type') || '–';
-      const priority = bug.getAttribute('priority') || '–';
-      const category = bug.getAttribute('category') || '–';
-      const cls      = bug.querySelector('Class')?.getAttribute('classname') || '–';
-      const method   = bug.querySelector('Method')?.getAttribute('name') || '–';
-      const line     = bug.querySelector('SourceLine')?.getAttribute('start') || '–';
-      rows.push({ type, priority, category, cls, method, line });
+async function loadSpotbugsFromFetch() {
+  var wrapper = document.getElementById('spotbugs-wrapper');
+  try {
+    var xml = await fetchXml('./spotbugs.xml');
+    var bugs = [];
+    xml.querySelectorAll('BugInstance').forEach(function(bug) {
+      var c = bug.querySelector('Class'), m = bug.querySelector('Method'), s = bug.querySelector('SourceLine');
+      bugs.push({ type: bug.getAttribute('type') || '-', priority: bug.getAttribute('priority') || '-',
+        category: bug.getAttribute('category') || '-',
+        cls: c ? c.getAttribute('classname') : '-',
+        method: m ? m.getAttribute('name') : '-',
+        line: s ? s.getAttribute('start') : '-' });
     });
-
-    wrapper.innerHTML = `
-      <div class="table-toolbar">
-        <span class="table-title">${count} bug${count !== 1 ? 's' : ''} encontrado${count !== 1 ? 's' : ''}</span>
-        <input type="search" class="search-input" placeholder="Buscar…" oninput="filterTable('sb-tbody', this.value)" />
-      </div>
-      <div style="overflow-x:auto">
-        <table>
-          <thead>
-            <tr>
-              <th>Tipo</th>
-              <th>Categoría</th>
-              <th>Prioridad</th>
-              <th>Clase</th>
-              <th>Método</th>
-              <th>Línea</th>
-            </tr>
-          </thead>
-          <tbody id="sb-tbody">
-            ${rows.map(r => `
-              <tr>
-                <td class="td-message">${r.type}</td>
-                <td>${r.category}</td>
-                <td><span class="pill pill-${r.priority}">${r.priority}</span></td>
-                <td>${r.cls.split('.').pop()}</td>
-                <td>${r.method}</td>
-                <td>${r.line}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>`;
-  } catch {
+    renderSpotbugs(bugs);
+  } catch(e) {
     document.getElementById('sum-spotbugs').textContent = '?';
     updateBadge('badge-spotbugs', '?', '');
-    wrapper.innerHTML = `<div class="state-box">
-      <span class="icon-lg">📭</span>
-      <p>No se pudo cargar <code>spotbugs.xml</code>. Se genera en cada CI.</p>
-    </div>`;
+    wrapper.innerHTML = noDataRow(1, 'No se pudo cargar spotbugs.xml');
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// JACOCO (CSV + XML)
-// ══════════════════════════════════════════════════════════════
-async function loadJacoco() {
+async function loadJacocoFromFetch() {
   try {
-    const csv = await fetchText('./jacoco.csv');
-    const lines = csv.trim().split('\n').filter(l => l.trim());
-    if (lines.length < 2) throw new Error('CSV vacío');
-
-    // Parse CSV (skip header)
-    const data = lines.slice(1).map(line => {
-      const cols = line.split(',');
-      return {
-        group:   cols[0] || '',
-        pkg:     cols[1] || '',
-        cls:     cols[2] || '',
-        iMissed: parseInt(cols[3]) || 0,
-        iCov:    parseInt(cols[4]) || 0,
-        bMissed: parseInt(cols[5]) || 0,
-        bCov:    parseInt(cols[6]) || 0,
-        lMissed: parseInt(cols[7]) || 0,
-        lCov:    parseInt(cols[8]) || 0,
-        cxMissed:parseInt(cols[9]) || 0,
-        cxCov:   parseInt(cols[10]) || 0,
-        mMissed: parseInt(cols[11]) || 0,
-        mCov:    parseInt(cols[12]) || 0,
-      };
+    var csv = await fetchText('./jacoco.csv');
+    var lines = csv.trim().split('\n').filter(function(l) { return l.trim(); });
+    if (lines.length < 2) throw new Error('vacio');
+    var data = lines.slice(1).map(function(line) {
+      var c = line.split(',');
+      return { group: c[0]||'', pkg: c[1]||'', cls: c[2]||'',
+        iMissed:+c[3]||0, iCov:+c[4]||0, bMissed:+c[5]||0, bCov:+c[6]||0,
+        lMissed:+c[7]||0, lCov:+c[8]||0, cxMissed:+c[9]||0, cxCov:+c[10]||0,
+        mMissed:+c[11]||0, mCov:+c[12]||0 };
     });
-
-    // Totals
-    const totals = data.reduce((acc, d) => {
+    var totals = data.reduce(function(acc, d) {
       acc.iMissed += d.iMissed; acc.iCov += d.iCov;
       acc.bMissed += d.bMissed; acc.bCov += d.bCov;
       acc.lMissed += d.lMissed; acc.lCov += d.lCov;
       acc.mMissed += d.mMissed; acc.mCov += d.mCov;
       return acc;
     }, { iMissed:0, iCov:0, bMissed:0, bCov:0, lMissed:0, lCov:0, mMissed:0, mCov:0 });
-
-    const instrPct = pct(totals.iCov, totals.iMissed);
-    document.getElementById('sum-jacoco').textContent = `${instrPct}%`;
-    document.getElementById('sub-jacoco').textContent =
-      `instrucciones · ${pct(totals.lCov,totals.lMissed)}% líneas · ${pct(totals.bCov,totals.bMissed)}% ramas`;
-    updateBadge('badge-jacoco', `${instrPct}%`, instrPct >= 80 ? 'ok' : instrPct >= 50 ? 'warn' : 'err');
-
-    // Coverage bars (overview + jacoco tab)
-    const barsHtml = data.map(d => {
-      const p = pct(d.iCov, d.iMissed);
-      const cls = coverageClass(p);
-      return `
-        <div class="coverage-row">
-          <div class="coverage-header">
-            <span class="coverage-class">${d.cls}</span>
-            <span class="coverage-pct" style="color:${cls==='' ? 'var(--green)' : cls==='med' ? 'var(--amber)' : 'var(--red)'}">${p}%</span>
-          </div>
-          <div class="bar-track">
-            <div class="bar-fill ${cls}" data-width="${p}"></div>
-          </div>
-          <div class="coverage-metrics">
-            <span class="metric-chip">Instrucciones: <b>${d.iCov}/${d.iCov+d.iMissed}</b></span>
-            <span class="metric-chip">Ramas: <b>${d.bCov}/${d.bCov+d.bMissed}</b></span>
-            <span class="metric-chip">Líneas: <b>${d.lCov}/${d.lCov+d.lMissed}</b></span>
-            <span class="metric-chip">Métodos: <b>${d.mCov}/${d.mCov+d.mMissed}</b></span>
-          </div>
-        </div>`;
-    }).join('');
-
-    document.getElementById('overview-coverage').innerHTML = barsHtml;
-    document.getElementById('jacoco-bars').innerHTML = barsHtml;
-
-    // Animate bars after render
-    setTimeout(() => {
-      document.querySelectorAll('.bar-fill[data-width]').forEach(el => {
-        el.style.width = el.dataset.width + '%';
-      });
-    }, 100);
-
-    // Detail table
-    const tableRows = data.map(d => {
-      const ip = pct(d.iCov, d.iMissed);
-      const bp = pct(d.bCov, d.bMissed);
-      const lp = pct(d.lCov, d.lMissed);
-      const mp = pct(d.mCov, d.mMissed);
-      const pillFor = p => `<span class="pill pill-${p>=80?'ok':p>=50?'4':'1'}">${p}%</span>`;
-      return `
-        <tr>
-          <td>${d.cls}</td>
-          <td>${pillFor(ip)}</td>
-          <td>${pillFor(bp)}</td>
-          <td>${pillFor(lp)}</td>
-          <td>${pillFor(mp)}</td>
-          <td><span class="pill pill-ok">1/1</span></td>
-        </tr>`;
-    }).join('');
-    document.getElementById('jacoco-tbody').innerHTML = tableRows;
-
-    // Header meta
-    document.getElementById('build-time').textContent =
-      `Último análisis: ${new Date().toLocaleString('es-EC', { dateStyle:'medium', timeStyle:'short' })}`;
-    document.getElementById('overall-badge').textContent = instrPct >= 80 ? '✅ Cobertura OK' : '⚠️ Cobertura baja';
-    document.getElementById('overall-badge').style.color = instrPct >= 80 ? 'var(--green)' : 'var(--amber)';
-
-  } catch {
+    renderJacoco(data, totals, null);
+  } catch(e) {
     document.getElementById('sum-jacoco').textContent = '?';
     updateBadge('badge-jacoco', '?', '');
-    const ph = `<div class="state-box">
-      <span class="icon-lg">📭</span>
-      <p>No se pudo cargar <code>jacoco.csv</code>. Se genera en cada CI.</p>
-    </div>`;
+    var ph = noDataRow(1, 'No se pudo cargar jacoco.csv');
     document.getElementById('overview-coverage').innerHTML = ph;
     document.getElementById('jacoco-bars').innerHTML = ph;
     document.getElementById('jacoco-tbody').innerHTML = errorRow(6, 'jacoco.csv');
     document.getElementById('build-time').textContent = 'Sin datos de build';
-    document.getElementById('overall-badge').textContent = '⚠️ Sin datos';
+    document.getElementById('overall-badge').textContent = '\u26a0\ufe0f Sin datos';
   }
 }
 
 // ══════════════════════════════════════════════════════════════
-// INIT – carga todo en paralelo
+// INIT — detecta el modo y arranca la carga
 // ══════════════════════════════════════════════════════════════
-Promise.all([loadCheckstyle(), loadPmd(), loadSpotbugs(), loadJacoco()]);
+if (window.REPORT_DATA) {
+  console.log('[Dashboard] Modo embebido (Base64)');
+  loadFromEmbedded(window.REPORT_DATA);
+} else {
+  console.log('[Dashboard] Modo fetch (servidor)');
+  Promise.all([
+    loadCheckstyleFromFetch(),
+    loadPmdFromFetch(),
+    loadSpotbugsFromFetch(),
+    loadJacocoFromFetch()
+  ]);
+}
 </script>
 
 </body>
