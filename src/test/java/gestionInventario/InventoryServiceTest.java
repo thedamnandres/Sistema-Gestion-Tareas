@@ -88,6 +88,13 @@ class InventoryServiceTest {
     }
 
     @Test
+    void findByNameReturnsEmptyWhenNameIsNull() {
+        Optional<Product> found = inventoryService.findByName(null);
+
+        assertFalse(found.isPresent());
+    }
+
+    @Test
     void getProductsReturnsUnmodifiableList() {
         assertThrows(UnsupportedOperationException.class,
                 () -> inventoryService.getProducts().add(new Product("Mouse", 1, 10.0)));
