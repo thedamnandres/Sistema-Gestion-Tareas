@@ -39,5 +39,10 @@ build/
 # Reportes generados (opcional: quítalo si quieres versionar los reportes)
 # site/
 
+# Artefactos generados del dashboard
+reports/*.xml
+reports/*.csv
+reports/jacoco/
+
 # Sistema
 .DS_Store
