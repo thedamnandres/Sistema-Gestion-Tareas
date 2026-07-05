@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InventoryApp.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">calidad-software</a> &gt; <a href="index.source.html" class="el_package">gestionInventario</a> &gt; <span class="el_source">InventoryApp.java</span></div><h1>InventoryApp.java</h1><pre class="source lang-java linenums">package gestionInventario;
+
+/**
+ * Clase principal (punto de entrada) que muestra cómo se usa
+ * {@link InventoryService} e imprime el contenido del inventario en
+ * consola. Toda la lógica de presentación vive aquí, separada de la
+ * lógica de negocio que está en {@link InventoryService}.
+ */
+public final class InventoryApp {
+
+    private InventoryApp() {
+    }
+
+    /**
+     * Crea un inventario de ejemplo y muestra su contenido por consola.
+     *
+     * @param args argumentos de línea de comandos (no se usan)
+     */
+    public static void main(String[] args) {
+<span class="fc" id="L20">        InventoryService inventoryService = new InventoryService();</span>
+<span class="fc" id="L21">        inventoryService.addProduct(new Product(&quot;Laptop&quot;, 5, 1000.0));</span>
+
+<span class="fc bfc" id="L23" title="All 2 branches covered.">        for (Product product : inventoryService.getProducts()) {</span>
+<span class="fc" id="L24">            System.out.println(&quot;Product: &quot; + product.getName()</span>
+<span class="fc" id="L25">                    + &quot;, Quantity: &quot; + product.getQuantity()</span>
+<span class="fc" id="L26">                    + &quot;, Price: $&quot; + product.getPrice());</span>
+<span class="fc" id="L27">        }</span>
+<span class="fc" id="L28">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

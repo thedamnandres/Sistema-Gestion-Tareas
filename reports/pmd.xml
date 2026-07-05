@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pmd xmlns="http://pmd.sourceforge.net/report/2.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pmd.sourceforge.net/report/2.0.0 https://pmd.github.io/schema/report_2_0_0.xsd" version="7.7.0" timestamp="2026-07-04T19:20:54.822">
+<file name="/Users/thedamnandres/Documents/Calidad SW/Sistema-Gestion-Tareas/src/main/java/gestionInventario/Inventory.java">
+<violation beginline="6" endline="6" begincolumn="8" endcolumn="13" rule="AtLeastOneConstructor" ruleset="Code Style" package="proyecto3" class="Inventory" externalInfoUrl="https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_codestyle.html#atleastoneconstructor" priority="3">
+Each class should declare at least one constructor
+</violation>
+<violation beginline="7" endline="7" begincolumn="18" endcolumn="26" rule="ImmutableField" ruleset="Design" package="proyecto3" class="Inventory" variable="products" externalInfoUrl="https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_design.html#immutablefield" priority="3">
+Field 'products' may be declared final
+</violation>
+<violation beginline="8" endline="8" begincolumn="18" endcolumn="28" rule="ImmutableField" ruleset="Design" package="proyecto3" class="Inventory" variable="quantities" externalInfoUrl="https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_design.html#immutablefield" priority="3">
+Field 'quantities' may be declared final
+</violation>
+<violation beginline="9" endline="9" begincolumn="18" endcolumn="24" rule="ImmutableField" ruleset="Design" package="proyecto3" class="Inventory" variable="prices" externalInfoUrl="https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_design.html#immutablefield" priority="3">
+Field 'prices' may be declared final
+</violation>
+<violation beginline="11" endline="11" begincolumn="35" endcolumn="36" rule="ShortVariable" ruleset="Code Style" package="proyecto3" class="Inventory" method="addProduct" variable="p" externalInfoUrl="https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_codestyle.html#shortvariable" priority="3">
+Avoid variables with short names like p
+</violation>
+<violation beginline="11" endline="11" begincolumn="35" endcolumn="36" rule="MethodArgumentCouldBeFinal" ruleset="Code Style" package="proyecto3" class="Inventory" method="addProduct" variable="p" externalInfoUrl="https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_codestyle.html#methodargumentcouldbefinal" priority="3">
+Parameter 'p' is not assigned and could be declared final
+</violation>
+<violation beginline="11" endline="11" begincolumn="42" endcolumn="43" rule="ShortVariable" ruleset="Code Style" package="proyecto3" class="Inventory" method="addProduct" variable="q" externalInfoUrl="https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_codestyle.html#shortvariable" priority="3">
+Avoid variables with short names like q
+</violation>
+<violation beginline="11" endline="11" begincolumn="42" endcolumn="43" rule="MethodArgumentCouldBeFinal" ruleset="Code Style" package="proyecto3" class="Inventory" method="addProduct" variable="q" externalInfoUrl="https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_codestyle.html#methodargumentcouldbefinal" priority="3">
+Parameter 'q' is not assigned and could be declared final
+</violation>
+<violation beginline="11" endline="11" begincolumn="52" endcolumn="57" rule="MethodArgumentCouldBeFinal" ruleset="Code Style" package="proyecto3" class="Inventory" method="addProduct" variable="price" externalInfoUrl="https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_codestyle.html#methodargumentcouldbefinal" priority="3">
+Parameter 'price' is not assigned and could be declared final
+</violation>
+<violation beginline="15" endline="15" begincolumn="9" endcolumn="15" rule="SystemPrintln" ruleset="Best Practices" package="proyecto3" class="Inventory" method="addProduct" externalInfoUrl="https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#systemprintln" priority="2">
+Usage of System.out/err
+</violation>
+<violation beginline="20" endline="20" begincolumn="13" endcolumn="19" rule="SystemPrintln" ruleset="Best Practices" package="proyecto3" class="Inventory" method="printInventory" externalInfoUrl="https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#systemprintln" priority="2">
+Usage of System.out/err
+</violation>
+<violation beginline="25" endline="25" begincolumn="19" endcolumn="28" rule="LocalVariableCouldBeFinal" ruleset="Code Style" package="proyecto3" class="Inventory" method="main" variable="inventory" externalInfoUrl="https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_codestyle.html#localvariablecouldbefinal" priority="3">
+Local variable 'inventory' could be declared final
+</violation>
+</file>
+<configerror rule="LoosePackageCoupling" msg="No packages or classes specified"/>
+</pmd>

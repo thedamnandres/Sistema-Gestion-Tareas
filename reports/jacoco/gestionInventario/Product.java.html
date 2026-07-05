@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Product.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">calidad-software</a> &gt; <a href="index.source.html" class="el_package">gestionInventario</a> &gt; <span class="el_source">Product.java</span></div><h1>Product.java</h1><pre class="source lang-java linenums">package gestionInventario;
+
+/**
+ * Clase que representa un producto del inventario. Guarda el nombre,
+ * la cantidad disponible en stock y el precio unitario del producto.
+ */
+public class Product {
+
+    private final String name;
+    private int quantity;
+    private double price;
+
+    /**
+     * Constructor de la clase Product. Se usa para crear un producto
+     * nuevo con sus datos iniciales.
+     *
+     * @param name     nombre del producto
+     * @param quantity cantidad disponible en stock
+     * @param price    precio unitario del producto
+     */
+<span class="fc" id="L21">    public Product(String name, int quantity, double price) {</span>
+<span class="fc" id="L22">        this.name = name;</span>
+<span class="fc" id="L23">        this.quantity = quantity;</span>
+<span class="fc" id="L24">        this.price = price;</span>
+<span class="fc" id="L25">    }</span>
+
+    /**
+     * Devuelve el nombre del producto.
+     *
+     * @return el nombre del producto
+     */
+    public String getName() {
+<span class="fc" id="L33">        return name;</span>
+    }
+
+    /**
+     * Devuelve la cantidad disponible en stock.
+     *
+     * @return la cantidad disponible
+     */
+    public int getQuantity() {
+<span class="fc" id="L42">        return quantity;</span>
+    }
+
+    /**
+     * Actualiza la cantidad disponible en stock.
+     *
+     * @param quantity la nueva cantidad
+     */
+    public void setQuantity(int quantity) {
+<span class="fc" id="L51">        this.quantity = quantity;</span>
+<span class="fc" id="L52">    }</span>
+
+    /**
+     * Devuelve el precio unitario del producto.
+     *
+     * @return el precio unitario
+     */
+    public double getPrice() {
+<span class="fc" id="L60">        return price;</span>
+    }
+
+    /**
+     * Actualiza el precio unitario del producto.
+     *
+     * @param price el nuevo precio
+     */
+    public void setPrice(double price) {
+<span class="fc" id="L69">        this.price = price;</span>
+<span class="fc" id="L70">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>
