@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard de Calidad – Sistema de Gestión de Inventario</title>
+  <meta name="description" content="Dashboard consolidado de reportes de calidad de código: Checkstyle, PMD, SpotBugs y JaCoCo para el proyecto Sistema de Gestión de Inventario." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-0:        #090b11;
+      --bg-1:        #0f1117;
+      --bg-2:        #161820;
+      --bg-3:        #1e2130;
+      --bg-card:     rgba(30, 33, 48, 0.7);
+      --border:      rgba(255,255,255,0.07);
+      --border-hi:   rgba(255,255,255,0.15);
+      --text-1:      #f0f2ff;
+      --text-2:      #8b90a8;
+      --text-3:      #5a5f75;
+
+      --violet:      #7c6aff;
+      --violet-glow: rgba(124,106,255,0.25);
+      --blue:        #4ea8de;
+      --blue-glow:   rgba(78,168,222,0.2);
+      --green:       #3dd68c;
+      --green-glow:  rgba(61,214,140,0.2);
+      --amber:       #f5a623;
+      --amber-glow:  rgba(245,166,35,0.2);
+      --red:         #f06565;
+      --red-glow:    rgba(240,101,101,0.2);
+      --teal:        #38bdf8;
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --radius-xl: 24px;
+
+      --shadow-card: 0 4px 24px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.05) inset;
+      --transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-0);
+      color: var(--text-1);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Background mesh ──────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: -1;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 10%, rgba(124,106,255,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(61,214,140,0.05) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 30% at 50% 50%, rgba(78,168,222,0.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    /* ── Layout ───────────────────────────────────────────── */
+    .container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Header ───────────────────────────────────────────── */
+    header {
+      padding: 40px 0 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header-inner {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      flex-wrap: wrap; gap: 16px;
+    }
+    .header-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(124,106,255,0.12);
+      border: 1px solid rgba(124,106,255,0.3);
+      color: #a89cff;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+      padding: 4px 10px; border-radius: 999px; text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .header-badge::before { content: '●'; font-size: 8px; color: var(--violet); animation: blink 2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    h1 { font-size: clamp(22px,4vw,32px); font-weight: 800; line-height: 1.2; }
+    h1 span { 
+      background: linear-gradient(135deg, var(--violet), var(--blue));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle { color: var(--text-2); font-size: 14px; margin-top: 6px; }
+
+    .header-meta {
+      text-align: right;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+    }
+    .build-time {
+      font-size: 12px; color: var(--text-3);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .overall-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 999px;
+      font-size: 13px; font-weight: 600;
+      background: rgba(61,214,140,0.12);
+      border: 1px solid rgba(61,214,140,0.3);
+      color: var(--green);
+    }
+
+    /* ── Nav tabs ─────────────────────────────────────────── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(9,11,17,0.85);
+      backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      display: flex; gap: 4px; padding: 0 4px;
+      overflow-x: auto;
+    }
+    .nav-inner::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      display: flex; align-items: center; gap: 7px;
+      padding: 14px 18px; font-size: 13px; font-weight: 500;
+      color: var(--text-2); background: none; border: none; cursor: pointer;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap; transition: var(--transition);
+      position: relative;
+    }
+    .tab-btn:hover { color: var(--text-1); }
+    .tab-btn.active { color: var(--text-1); border-bottom-color: var(--violet); }
+    .tab-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 20px; height: 20px; padding: 0 5px;
+      font-size: 10px; font-weight: 700;
+      border-radius: 999px;
+      background: var(--bg-3);
+    }
+    .tab-badge.ok  { background: rgba(61,214,140,0.15); color: var(--green); }
+    .tab-badge.warn { background: rgba(245,166,35,0.15); color: var(--amber); }
+    .tab-badge.err  { background: rgba(240,101,101,0.15); color: var(--red); }
+
+    /* ── Main sections ────────────────────────────────────── */
+    main { padding: 40px 0 80px; }
+    .section { display: none; animation: fadeUp 0.35s ease both; }
+    .section.active { display: block; }
+    @keyframes fadeUp {
+      from { opacity:0; transform: translateY(16px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+
+    /* ── Section header ───────────────────────────────────── */
+    .section-header { margin-bottom: 28px; }
+    .section-title {
+      font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px;
+    }
+    .section-title .icon {
+      width: 36px; height: 36px; border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .section-desc { font-size: 13px; color: var(--text-2); margin-top: 6px; }
+
+    /* ── Summary cards grid ───────────────────────────────── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 22px 24px;
+      box-shadow: var(--shadow-card);
+      transition: var(--transition);
+      cursor: pointer;
+      position: relative; overflow: hidden;
+    }
+    .card::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    .card:hover {
+      border-color: var(--border-hi);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.07) inset;
+    }
+    .card-icon {
+      font-size: 28px; margin-bottom: 14px;
+      width: 48px; height: 48px; border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .card-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); margin-bottom: 6px; }
+    .card-value { font-size: 36px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+    .card-sub   { font-size: 12px; color: var(--text-2); margin-top: 6px; }
+
+    .card-checkstyle .card-icon { background: rgba(124,106,255,0.15); }
+    .card-checkstyle .card-value { color: var(--violet); }
+    .card-pmd .card-icon { background: rgba(245,166,35,0.12); }
+    .card-pmd .card-value { color: var(--amber); }
+    .card-spotbugs .card-icon { background: rgba(240,101,101,0.12); }
+    .card-spotbugs .card-value { color: var(--red); }
+    .card-jacoco .card-icon { background: rgba(61,214,140,0.12); }
+    .card-jacoco .card-value { color: var(--green); }
+
+    /* Glow accent on cards */
+    .card-checkstyle { box-shadow: var(--shadow-card), 0 0 0 1px rgba(124,106,255,0.08); }
+    .card-pmd        { box-shadow: var(--shadow-card), 0 0 0 1px rgba(245,166,35,0.08); }
+    .card-spotbugs   { box-shadow: var(--shadow-card), 0 0 0 1px rgba(240,101,101,0.08); }
+    .card-jacoco     { box-shadow: var(--shadow-card), 0 0 0 1px rgba(61,214,140,0.08); }
+
+    /* ── Coverage bars ────────────────────────────────────── */
+    .coverage-grid {
+      display: grid; gap: 12px;
+      margin-bottom: 32px;
+    }
+    .coverage-row {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 16px 20px;
+      backdrop-filter: blur(12px);
+    }
+    .coverage-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .coverage-class { font-size: 13px; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: var(--teal); }
+    .coverage-pct { font-size: 15px; font-weight: 700; }
+    .bar-track {
+      height: 8px; border-radius: 999px; background: rgba(255,255,255,0.07); overflow: hidden; margin-bottom: 8px;
+    }
+    .bar-fill {
+      height: 100%; border-radius: 999px;
+      background: linear-gradient(90deg, var(--violet), var(--green));
+      width: 0%;
+      transition: width 1s cubic-bezier(0.4,0,0.2,1);
+    }
+    .bar-fill.low   { background: linear-gradient(90deg, var(--red), var(--amber)); }
+    .bar-fill.med   { background: linear-gradient(90deg, var(--amber), #f5d623); }
+    .coverage-metrics { display: flex; gap: 16px; flex-wrap: wrap; }
+    .metric-chip {
+      font-size: 11px; color: var(--text-2);
+      background: var(--bg-3); padding: 3px 9px; border-radius: 999px;
+    }
+    .metric-chip b { color: var(--text-1); }
+
+    /* ── Tables ───────────────────────────────────────────── */
+    .table-wrapper {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden;
+      backdrop-filter: blur(12px);
+    }
+    .table-toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 10px;
+    }
+    .table-title { font-size: 14px; font-weight: 600; }
+    .search-input {
+      background: var(--bg-3); border: 1px solid var(--border);
+      color: var(--text-1); padding: 7px 12px; border-radius: var(--radius-sm);
+      font-size: 12px; font-family: inherit; outline: none;
+      width: 220px; transition: var(--transition);
+    }
+    .search-input:focus { border-color: var(--violet); box-shadow: 0 0 0 3px var(--violet-glow); }
+    .search-input::placeholder { color: var(--text-3); }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      text-align: left; padding: 12px 16px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--text-3); background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.03); }
+    tbody td {
+      padding: 11px 16px; font-size: 12px; color: var(--text-2);
+      vertical-align: top;
+    }
+    tbody td:first-child { font-family: 'JetBrains Mono', monospace; color: var(--text-1); font-size: 11px; }
+    .td-message { color: var(--text-1) !important; font-family: inherit !important; font-size: 12px !important; line-height: 1.5; }
+
+    /* Priority / severity pills */
+    .pill {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700;
+      white-space: nowrap;
+    }
+    .pill-1 { background: rgba(240,101,101,0.15); color: var(--red); }
+    .pill-2 { background: rgba(245,166,35,0.15); color: var(--amber); }
+    .pill-3 { background: rgba(124,106,255,0.15); color: var(--violet); }
+    .pill-4 { background: rgba(78,168,222,0.12); color: var(--blue); }
+    .pill-5 { background: rgba(255,255,255,0.07); color: var(--text-2); }
+    .pill-ok { background: rgba(61,214,140,0.12); color: var(--green); }
+
+    /* ── No data / loading states ─────────────────────────── */
+    .state-box {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 60px 20px; gap: 14px;
+      color: var(--text-3); font-size: 14px; text-align: center;
+    }
+    .state-box .icon-lg { font-size: 48px; opacity: 0.4; }
+    .state-box p { max-width: 360px; line-height: 1.6; }
+    .state-box code {
+      font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      background: var(--bg-3); padding: 2px 6px; border-radius: 4px;
+    }
+
+    .spinner {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 3px solid var(--bg-3);
+      border-top-color: var(--violet);
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Links section ────────────────────────────────────── */
+    .links-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 14px;
+      margin-top: 28px;
+    }
+    .link-card {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 18px 20px;
+      text-decoration: none; color: var(--text-1);
+      transition: var(--transition); backdrop-filter: blur(12px);
+    }
+    .link-card:hover {
+      border-color: var(--border-hi); transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    }
+    .link-icon { font-size: 24px; flex-shrink: 0; }
+    .link-label { font-size: 13px; font-weight: 600; }
+    .link-desc  { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+
+    /* ── Footer ───────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border); padding: 28px 0;
+      text-align: center; color: var(--text-3); font-size: 12px;
+    }
+    footer a { color: var(--text-2); text-decoration: none; }
+    footer a:hover { color: var(--text-1); }
+
+    /* ── Responsive ───────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .header-inner { flex-direction: column; }
+      .header-meta  { align-items: flex-start; text-align: left; }
+      .cards-grid   { grid-template-columns: 1fr 1fr; }
+      .search-input { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- HEADER                                                       -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <div>
+        <div class="header-badge">Calidad de Software – ISWZ3208</div>
+        <h1>Dashboard de <span>Calidad</span></h1>
+        <p class="subtitle">Sistema de Gestión de Inventario · Análisis consolidado de herramientas</p>
+      </div>
+      <div class="header-meta">
+        <div class="build-time" id="build-time">Cargando datos…</div>
+        <div class="overall-badge" id="overall-badge">⏳ Analizando</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- NAV TABS                                                     -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<nav>
+  <div class="container">
+    <div class="nav-inner">
+      <button class="tab-btn active" data-tab="overview" id="btn-overview">
+        🏠 Resumen
+      </button>
+      <button class="tab-btn" data-tab="checkstyle" id="btn-checkstyle">
+        🎨 Checkstyle
+        <span class="tab-badge" id="badge-checkstyle">–</span>
+      </button>
+      <button class="tab-btn" data-tab="pmd" id="btn-pmd">
+        🔍 PMD
+        <span class="tab-badge" id="badge-pmd">–</span>
+      </button>
+      <button class="tab-btn" data-tab="spotbugs" id="btn-spotbugs">
+        🐛 SpotBugs
+        <span class="tab-badge" id="badge-spotbugs">–</span>
+      </button>
+      <button class="tab-btn" data-tab="jacoco" id="btn-jacoco">
+        📊 JaCoCo
+        <span class="tab-badge" id="badge-jacoco">–</span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MAIN                                                         -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<main>
+  <div class="container">
+
+    <!-- ── OVERVIEW ──────────────────────────────────────── -->
+    <section class="section active" id="tab-overview">
+      <div class="section-header">
+        <div class="section-title">
+          <div class="icon" style="background:rgba(124,106,255,0.12)">🏠</div>
+          Resumen General
+        </div>
+        <p class="section-desc">Métricas clave de todos los reportes en un vistazo.</p>
+      </div>
+
+      <div class="cards-grid">
+        <!-- Checkstyle -->
+        <div class="card card-checkstyle" onclick="switchTab('checkstyle')" role="button" aria-label="Ver detalles de Checkstyle">
+          <div class="card-icon">🎨</div>
+          <div class="card-label">Checkstyle</div>
+          <div class="card-value" id="sum-checkstyle">–</div>
+          <div class="card-sub" id="sub-checkstyle">violaciones de estilo</div>
+        </div>
+        <!-- PMD -->
+        <div class="card card-pmd" onclick="switchTab('pmd')" role="button" aria-label="Ver detalles de PMD">
+          <div class="card-icon">🔍</div>
+          <div class="card-label">PMD</div>
+          <div class="card-value" id="sum-pmd">–</div>
+          <div class="card-sub" id="sub-pmd">violaciones encontradas</div>
+        </div>
+        <!-- SpotBugs -->
+        <div class="card card-spotbugs" onclick="switchTab('spotbugs')" role="button" aria-label="Ver detalles de SpotBugs">
+          <div class="card-icon">🐛</div>
+          <div class="card-label">SpotBugs</div>
+          <div class="card-value" id="sum-spotbugs">–</div>
+          <div class="card-sub" id="sub-spotbugs">bugs de bytecode</div>
+        </div>
+        <!-- JaCoCo -->
+        <div class="card card-jacoco" onclick="switchTab('jacoco')" role="button" aria-label="Ver detalles de JaCoCo">
+          <div class="card-icon">📊</div>
+          <div class="card-label">JaCoCo</div>
+          <div class="card-value" id="sum-jacoco">–</div>
+          <div class="card-sub" id="sub-jacoco">cobertura de instrucciones</div>
+        </div>
+      </div>
+
+      <!-- Coverage preview bars -->
+      <div class="section-header" style="margin-top:8px">
+        <div class="section-title" style="font-size:16px">
+          <div class="icon" style="background:rgba(61,214,140,0.12);font-size:16px">📈</div>
+          Cobertura por Clase
+        </div>
+      </div>
+      <div class="coverage-grid" id="overview-coverage">
+        <div class="state-box"><div class="spinner"></div><p>Cargando cobertura…</p></div>
+      </div>
+
+      <!-- Quick links -->
+      <div class="section-header" style="margin-top:8px">
+        <div class="section-title" style="font-size:16px">
+          <div class="icon" style="background:rgba(78,168,222,0.12);font-size:16px">🔗</div>
+          Reportes Nativos
+        </div>
+      </div>
+      <div class="links-grid">
+        <a href="./jacoco/index.html" target="_blank" class="link-card" id="link-jacoco">
+          <span class="link-icon">📊</span>
+          <div>
+            <div class="link-label">JaCoCo HTML</div>
+            <div class="link-desc">Reporte detallado de cobertura por línea</div>
+          </div>
+        </a>
+        <a href="./checkstyle-result.xml" target="_blank" class="link-card">
+          <span class="link-icon">📄</span>
+          <div>
+            <div class="link-label">Checkstyle XML</div>
+            <div class="link-desc">Archivo fuente de violaciones de estilo</div>
+          </div>
+        </a>
+        <a href="./pmd.xml" target="_blank" class="link-card">
+          <span class="link-icon">📄</span>
+          <div>
+            <div class="link-label">PMD XML</div>
+            <div class="link-desc">Archivo fuente de análisis PMD</div>
+          </div>
+        </a>
+        <a href="./spotbugs.xml" target="_blank" class="link-card">
+          <span class="link-icon">📄</span>
+          <div>
+            <div class="link-label">SpotBugs XML</div>
+            <div class="link-desc">Archivo fuente de análisis de bytecode</div>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- ── CHECKSTYLE ─────────────────────────────────────── -->
+    <section class="section" id="tab-checkstyle">
+      <div class="section-header">
+        <div class="section-title">
+          <div class="icon" style="background:rgba(124,106,255,0.15)">🎨</div>
+          Checkstyle · Violaciones de Estilo
+        </div>
+        <p class="section-desc">Análisis basado en <strong>Google Java Style Guide</strong> (google_checks.xml).</p>
+      </div>
+      <div class="table-wrapper">
+        <div class="table-toolbar">
+          <span class="table-title" id="cs-count">Cargando…</span>
+          <input type="search" class="search-input" id="cs-search" placeholder="Buscar archivo, regla…" oninput="filterTable('cs-tbody', this.value)" />
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Archivo</th>
+                <th>Línea</th>
+                <th>Columna</th>
+                <th>Regla</th>
+                <th>Mensaje</th>
+              </tr>
+            </thead>
+            <tbody id="cs-tbody">
+              <tr><td colspan="5"><div class="state-box"><div class="spinner"></div><p>Cargando…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── PMD ────────────────────────────────────────────── -->
+    <section class="section" id="tab-pmd">
+      <div class="section-header">
+        <div class="section-title">
+          <div class="icon" style="background:rgba(245,166,35,0.12)">🔍</div>
+          PMD · Análisis Estático
+        </div>
+        <p class="section-desc">Detección de malas prácticas, estilo y diseño del código fuente.</p>
+      </div>
+      <div class="table-wrapper">
+        <div class="table-toolbar">
+          <span class="table-title" id="pmd-count">Cargando…</span>
+          <input type="search" class="search-input" id="pmd-search" placeholder="Buscar archivo, regla…" oninput="filterTable('pmd-tbody', this.value)" />
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Archivo</th>
+                <th>Línea</th>
+                <th>Prioridad</th>
+                <th>Regla</th>
+                <th>Mensaje</th>
+              </tr>
+            </thead>
+            <tbody id="pmd-tbody">
+              <tr><td colspan="5"><div class="state-box"><div class="spinner"></div><p>Cargando…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SPOTBUGS ───────────────────────────────────────── -->
+    <section class="section" id="tab-spotbugs">
+      <div class="section-header">
+        <div class="section-title">
+          <div class="icon" style="background:rgba(240,101,101,0.12)">🐛</div>
+          SpotBugs · Análisis de Bytecode
+        </div>
+        <p class="section-desc">Bugs potenciales detectados mediante análisis del bytecode compilado.</p>
+      </div>
+      <div class="table-wrapper" id="spotbugs-wrapper">
+        <div class="state-box"><div class="spinner"></div><p>Cargando…</p></div>
+      </div>
+    </section>
+
+    <!-- ── JACOCO ─────────────────────────────────────────── -->
+    <section class="section" id="tab-jacoco">
+      <div class="section-header">
+        <div class="section-title">
+          <div class="icon" style="background:rgba(61,214,140,0.12)">📊</div>
+          JaCoCo · Cobertura de Pruebas
+        </div>
+        <p class="section-desc">Cobertura de instrucciones, ramas, líneas y métodos por clase.</p>
+      </div>
+
+      <!-- Bars per class -->
+      <div class="coverage-grid" id="jacoco-bars">
+        <div class="state-box"><div class="spinner"></div><p>Cargando cobertura…</p></div>
+      </div>
+
+      <!-- Detail table -->
+      <div class="table-wrapper" style="margin-top:24px">
+        <div class="table-toolbar">
+          <span class="table-title">Detalle por Clase</span>
+          <a href="./jacoco/index.html" target="_blank" class="link-card" style="border:none;background:none;padding:6px 12px;border-radius:var(--radius-sm);font-size:12px;color:var(--violet);text-decoration:none;font-weight:600;">
+            Ver reporte nativo ↗
+          </a>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Clase</th>
+                <th>Instrucciones</th>
+                <th>Ramas</th>
+                <th>Líneas</th>
+                <th>Métodos</th>
+                <th>Clases</th>
+              </tr>
+            </thead>
+            <tbody id="jacoco-tbody">
+              <tr><td colspan="6"><div class="state-box"><div class="spinner"></div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /container -->
+</main>
+
+<footer>
+  <div class="container">
+    <p>ISWZ3208 Calidad de Software · Universidad de las Américas (UDLA) · Generado automáticamente por <a href="https://github.com/features/actions" target="_blank">GitHub Actions</a></p>
+  </div>
+</footer>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- JAVASCRIPT                                                   -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ── Tab navigation ─────────────────────────────────────────────
+function switchTab(id) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  const btn = document.querySelector(`[data-tab="${id}"]`);
+  const sec = document.getElementById(`tab-${id}`);
+  if (btn) btn.classList.add('active');
+  if (sec) sec.classList.add('active');
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+// ── Helpers ────────────────────────────────────────────────────
+function shortName(path) {
+  if (!path) return '–';
+  const parts = path.replace(/\\/g, '/').split('/');
+  return parts[parts.length - 1];
+}
+
+function pct(covered, missed) {
+  const total = covered + missed;
+  if (total === 0) return 100;
+  return Math.round((covered / total) * 100);
+}
+
+function coverageClass(p) {
+  if (p >= 80) return '';
+  if (p >= 50) return 'med';
+  return 'low';
+}
+
+function filterTable(tbodyId, query) {
+  const q = query.toLowerCase();
+  const rows = document.querySelectorAll(`#${tbodyId} tr`);
+  rows.forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+function updateBadge(id, count, colorClass) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = count;
+  el.className = 'tab-badge ' + colorClass;
+}
+
+// ── Fetch XML helper ───────────────────────────────────────────
+async function fetchXml(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const text = await res.text();
+  return new DOMParser().parseFromString(text, 'application/xml');
+}
+
+async function fetchText(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.text();
+}
+
+// ── No-data helpers ────────────────────────────────────────────
+function noDataRow(cols, label = 'No se encontraron datos') {
+  return `<tr><td colspan="${cols}">
+    <div class="state-box">
+      <span class="icon-lg">✅</span>
+      <p>${label}</p>
+    </div>
+  </td></tr>`;
+}
+
+function errorRow(cols, url) {
+  return `<tr><td colspan="${cols}">
+    <div class="state-box">
+      <span class="icon-lg">📭</span>
+      <p>No se pudo cargar el reporte <code>${url}</code>.<br/>
+         Este archivo se genera en cada ejecución del CI.</p>
+    </div>
+  </td></tr>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// CHECKSTYLE
+// ══════════════════════════════════════════════════════════════
+async function loadCheckstyle() {
+  const tbody = document.getElementById('cs-tbody');
+  const countEl = document.getElementById('cs-count');
+  try {
+    const xml = await fetchXml('./checkstyle-result.xml');
+    const files = xml.querySelectorAll('file');
+    const rows = [];
+    files.forEach(file => {
+      const filename = shortName(file.getAttribute('name'));
+      file.querySelectorAll('error').forEach(err => {
+        rows.push({
+          file: filename,
+          line: err.getAttribute('line') || '–',
+          col:  err.getAttribute('column') || '–',
+          rule: err.getAttribute('source')?.split('.').pop() || '–',
+          msg:  err.getAttribute('message') || '–',
+        });
+      });
+    });
+
+    const count = rows.length;
+    document.getElementById('sum-checkstyle').textContent = count;
+    countEl.textContent = `${count} violación${count !== 1 ? 'es' : ''}`;
+    updateBadge('badge-checkstyle', count, count === 0 ? 'ok' : count < 20 ? 'warn' : 'err');
+
+    if (count === 0) {
+      tbody.innerHTML = noDataRow(5, '✅ Sin violaciones de Checkstyle');
+      return;
+    }
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td>${r.file}</td>
+        <td>${r.line}</td>
+        <td>${r.col}</td>
+        <td><span class="pill pill-3">${r.rule}</span></td>
+        <td class="td-message">${r.msg}</td>
+      </tr>
+    `).join('');
+  } catch {
+    document.getElementById('sum-checkstyle').textContent = '?';
+    countEl.textContent = 'Error al cargar';
+    updateBadge('badge-checkstyle', '?', '');
+    tbody.innerHTML = errorRow(5, 'checkstyle-result.xml');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// PMD
+// ══════════════════════════════════════════════════════════════
+async function loadPmd() {
+  const tbody = document.getElementById('pmd-tbody');
+  const countEl = document.getElementById('pmd-count');
+  try {
+    const xml = await fetchXml('./pmd.xml');
+    const files = xml.querySelectorAll('file');
+    const rows = [];
+    files.forEach(file => {
+      const filename = shortName(file.getAttribute('name'));
+      file.querySelectorAll('violation').forEach(v => {
+        rows.push({
+          file: filename,
+          line: v.getAttribute('beginline') || '–',
+          priority: v.getAttribute('priority') || '5',
+          rule: v.getAttribute('rule') || '–',
+          msg: (v.textContent || '–').trim(),
+        });
+      });
+    });
+
+    const count = rows.length;
+    document.getElementById('sum-pmd').textContent = count;
+    countEl.textContent = `${count} violación${count !== 1 ? 'es' : ''}`;
+    updateBadge('badge-pmd', count, count === 0 ? 'ok' : count < 10 ? 'warn' : 'err');
+
+    if (count === 0) {
+      tbody.innerHTML = noDataRow(5, '✅ Sin violaciones de PMD');
+      return;
+    }
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td>${r.file}</td>
+        <td>${r.line}</td>
+        <td><span class="pill pill-${r.priority}">P${r.priority}</span></td>
+        <td><span class="pill pill-3">${r.rule}</span></td>
+        <td class="td-message">${r.msg}</td>
+      </tr>
+    `).join('');
+  } catch {
+    document.getElementById('sum-pmd').textContent = '?';
+    countEl.textContent = 'Error al cargar';
+    updateBadge('badge-pmd', '?', '');
+    tbody.innerHTML = errorRow(5, 'pmd.xml');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// SPOTBUGS
+// ══════════════════════════════════════════════════════════════
+async function loadSpotbugs() {
+  const wrapper = document.getElementById('spotbugs-wrapper');
+  try {
+    const xml = await fetchXml('./spotbugs.xml');
+    const bugs = xml.querySelectorAll('BugInstance');
+    const count = bugs.length;
+
+    document.getElementById('sum-spotbugs').textContent = count;
+    document.getElementById('sub-spotbugs').textContent = count === 0 ? 'sin bugs detectados ✅' : 'bugs de bytecode';
+    updateBadge('badge-spotbugs', count, count === 0 ? 'ok' : 'err');
+
+    if (count === 0) {
+      wrapper.innerHTML = `
+        <div class="state-box">
+          <span class="icon-lg">🎉</span>
+          <p><strong>¡Sin bugs de bytecode!</strong><br/>SpotBugs no encontró problemas en el código compilado.</p>
+        </div>`;
+      return;
+    }
+
+    const rows = [];
+    bugs.forEach(bug => {
+      const type     = bug.getAttribute('type') || '–';
+      const priority = bug.getAttribute('priority') || '–';
+      const category = bug.getAttribute('category') || '–';
+      const cls      = bug.querySelector('Class')?.getAttribute('classname') || '–';
+      const method   = bug.querySelector('Method')?.getAttribute('name') || '–';
+      const line     = bug.querySelector('SourceLine')?.getAttribute('start') || '–';
+      rows.push({ type, priority, category, cls, method, line });
+    });
+
+    wrapper.innerHTML = `
+      <div class="table-toolbar">
+        <span class="table-title">${count} bug${count !== 1 ? 's' : ''} encontrado${count !== 1 ? 's' : ''}</span>
+        <input type="search" class="search-input" placeholder="Buscar…" oninput="filterTable('sb-tbody', this.value)" />
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Categoría</th>
+              <th>Prioridad</th>
+              <th>Clase</th>
+              <th>Método</th>
+              <th>Línea</th>
+            </tr>
+          </thead>
+          <tbody id="sb-tbody">
+            ${rows.map(r => `
+              <tr>
+                <td class="td-message">${r.type}</td>
+                <td>${r.category}</td>
+                <td><span class="pill pill-${r.priority}">${r.priority}</span></td>
+                <td>${r.cls.split('.').pop()}</td>
+                <td>${r.method}</td>
+                <td>${r.line}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } catch {
+    document.getElementById('sum-spotbugs').textContent = '?';
+    updateBadge('badge-spotbugs', '?', '');
+    wrapper.innerHTML = `<div class="state-box">
+      <span class="icon-lg">📭</span>
+      <p>No se pudo cargar <code>spotbugs.xml</code>. Se genera en cada CI.</p>
+    </div>`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// JACOCO (CSV + XML)
+// ══════════════════════════════════════════════════════════════
+async function loadJacoco() {
+  try {
+    const csv = await fetchText('./jacoco.csv');
+    const lines = csv.trim().split('\n').filter(l => l.trim());
+    if (lines.length < 2) throw new Error('CSV vacío');
+
+    // Parse CSV (skip header)
+    const data = lines.slice(1).map(line => {
+      const cols = line.split(',');
+      return {
+        group:   cols[0] || '',
+        pkg:     cols[1] || '',
+        cls:     cols[2] || '',
+        iMissed: parseInt(cols[3]) || 0,
+        iCov:    parseInt(cols[4]) || 0,
+        bMissed: parseInt(cols[5]) || 0,
+        bCov:    parseInt(cols[6]) || 0,
+        lMissed: parseInt(cols[7]) || 0,
+        lCov:    parseInt(cols[8]) || 0,
+        cxMissed:parseInt(cols[9]) || 0,
+        cxCov:   parseInt(cols[10]) || 0,
+        mMissed: parseInt(cols[11]) || 0,
+        mCov:    parseInt(cols[12]) || 0,
+      };
+    });
+
+    // Totals
+    const totals = data.reduce((acc, d) => {
+      acc.iMissed += d.iMissed; acc.iCov += d.iCov;
+      acc.bMissed += d.bMissed; acc.bCov += d.bCov;
+      acc.lMissed += d.lMissed; acc.lCov += d.lCov;
+      acc.mMissed += d.mMissed; acc.mCov += d.mCov;
+      return acc;
+    }, { iMissed:0, iCov:0, bMissed:0, bCov:0, lMissed:0, lCov:0, mMissed:0, mCov:0 });
+
+    const instrPct = pct(totals.iCov, totals.iMissed);
+    document.getElementById('sum-jacoco').textContent = `${instrPct}%`;
+    document.getElementById('sub-jacoco').textContent =
+      `instrucciones · ${pct(totals.lCov,totals.lMissed)}% líneas · ${pct(totals.bCov,totals.bMissed)}% ramas`;
+    updateBadge('badge-jacoco', `${instrPct}%`, instrPct >= 80 ? 'ok' : instrPct >= 50 ? 'warn' : 'err');
+
+    // Coverage bars (overview + jacoco tab)
+    const barsHtml = data.map(d => {
+      const p = pct(d.iCov, d.iMissed);
+      const cls = coverageClass(p);
+      return `
+        <div class="coverage-row">
+          <div class="coverage-header">
+            <span class="coverage-class">${d.cls}</span>
+            <span class="coverage-pct" style="color:${cls==='' ? 'var(--green)' : cls==='med' ? 'var(--amber)' : 'var(--red)'}">${p}%</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill ${cls}" data-width="${p}"></div>
+          </div>
+          <div class="coverage-metrics">
+            <span class="metric-chip">Instrucciones: <b>${d.iCov}/${d.iCov+d.iMissed}</b></span>
+            <span class="metric-chip">Ramas: <b>${d.bCov}/${d.bCov+d.bMissed}</b></span>
+            <span class="metric-chip">Líneas: <b>${d.lCov}/${d.lCov+d.lMissed}</b></span>
+            <span class="metric-chip">Métodos: <b>${d.mCov}/${d.mCov+d.mMissed}</b></span>
+          </div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('overview-coverage').innerHTML = barsHtml;
+    document.getElementById('jacoco-bars').innerHTML = barsHtml;
+
+    // Animate bars after render
+    setTimeout(() => {
+      document.querySelectorAll('.bar-fill[data-width]').forEach(el => {
+        el.style.width = el.dataset.width + '%';
+      });
+    }, 100);
+
+    // Detail table
+    const tableRows = data.map(d => {
+      const ip = pct(d.iCov, d.iMissed);
+      const bp = pct(d.bCov, d.bMissed);
+      const lp = pct(d.lCov, d.lMissed);
+      const mp = pct(d.mCov, d.mMissed);
+      const pillFor = p => `<span class="pill pill-${p>=80?'ok':p>=50?'4':'1'}">${p}%</span>`;
+      return `
+        <tr>
+          <td>${d.cls}</td>
+          <td>${pillFor(ip)}</td>
+          <td>${pillFor(bp)}</td>
+          <td>${pillFor(lp)}</td>
+          <td>${pillFor(mp)}</td>
+          <td><span class="pill pill-ok">1/1</span></td>
+        </tr>`;
+    }).join('');
+    document.getElementById('jacoco-tbody').innerHTML = tableRows;
+
+    // Header meta
+    document.getElementById('build-time').textContent =
+      `Último análisis: ${new Date().toLocaleString('es-EC', { dateStyle:'medium', timeStyle:'short' })}`;
+    document.getElementById('overall-badge').textContent = instrPct >= 80 ? '✅ Cobertura OK' : '⚠️ Cobertura baja';
+    document.getElementById('overall-badge').style.color = instrPct >= 80 ? 'var(--green)' : 'var(--amber)';
+
+  } catch {
+    document.getElementById('sum-jacoco').textContent = '?';
+    updateBadge('badge-jacoco', '?', '');
+    const ph = `<div class="state-box">
+      <span class="icon-lg">📭</span>
+      <p>No se pudo cargar <code>jacoco.csv</code>. Se genera en cada CI.</p>
+    </div>`;
+    document.getElementById('overview-coverage').innerHTML = ph;
+    document.getElementById('jacoco-bars').innerHTML = ph;
+    document.getElementById('jacoco-tbody').innerHTML = errorRow(6, 'jacoco.csv');
+    document.getElementById('build-time').textContent = 'Sin datos de build';
+    document.getElementById('overall-badge').textContent = '⚠️ Sin datos';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// INIT – carga todo en paralelo
+// ══════════════════════════════════════════════════════════════
+Promise.all([loadCheckstyle(), loadPmd(), loadSpotbugs(), loadJacoco()]);
+</script>
+
+</body>
+</html>

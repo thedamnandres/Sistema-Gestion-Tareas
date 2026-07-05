@@ -1,0 +1,93 @@
+name: CI – Análisis de Calidad y GitHub Pages
+
+on:
+  push:
+    branches: [main, feat/workflows]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Solo permite un deploy de Pages a la vez
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # JOB 1: Compilar, testear y ejecutar todas las herramientas
+  # ─────────────────────────────────────────────────────────────
+  build-and-analyze:
+    name: Build, Test & Static Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      # Compila, ejecuta tests y genera reporte JaCoCo
+      - name: Ejecutar tests y cobertura (JaCoCo)
+        run: mvn verify --batch-mode --no-transfer-progress
+
+      # Ejecuta los tres análisis estáticos
+      - name: Ejecutar Checkstyle
+        run: mvn checkstyle:checkstyle --batch-mode --no-transfer-progress
+
+      - name: Ejecutar PMD
+        run: mvn pmd:pmd --batch-mode --no-transfer-progress
+
+      - name: Ejecutar SpotBugs
+        run: mvn spotbugs:spotbugs --batch-mode --no-transfer-progress
+
+      # Copia los reportes al directorio de deploy junto con el dashboard
+      - name: Preparar directorio de reportes para GitHub Pages
+        run: |
+          mkdir -p reports/jacoco
+
+          # Archivos XML/CSV de las herramientas
+          cp target/checkstyle-result.xml  reports/checkstyle-result.xml
+          cp target/pmd.xml                reports/pmd.xml
+          cp target/spotbugsXml.xml        reports/spotbugs.xml
+          cp target/site/jacoco/jacoco.csv reports/jacoco.csv
+          cp target/site/jacoco/jacoco.xml reports/jacoco.xml
+
+          # Reporte HTML nativo de JaCoCo (para el enlace "Ver detalle")
+          cp -r target/site/jacoco/. reports/jacoco/
+
+          # El dashboard index.html ya está versionado en reports/
+          echo "Directorio reports/ listo:"
+          ls -lh reports/
+
+      # Sube el directorio completo como artefacto para Pages
+      - name: Subir artefacto para GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: reports/
+
+  # ─────────────────────────────────────────────────────────────
+  # JOB 2: Desplegar en GitHub Pages (solo en push a main)
+  # ─────────────────────────────────────────────────────────────
+  deploy-pages:
+    name: Deploy GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build-and-analyze
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Desplegar en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
