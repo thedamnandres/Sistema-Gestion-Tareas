@@ -1,0 +1,194 @@
+name: CI – Análisis de Calidad
+
+on:
+  push:
+    branches: [main, feat/workflows]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# ══════════════════════════════════════════════════════════════
+#
+#  GRAFO DE EJECUCIÓN
+#
+#  ┌── 🏗️  build      (compile + test + JaCoCo + SpotBugs) ──┐
+#  ├── 🎨  checkstyle (fuentes, paralelo con build)            ├── 📊 dashboard
+#  └── 🔍  pmd        (fuentes, paralelo con build) ──────────┘
+#
+#  checkstyle y pmd analizan .java → no necesitan compilación.
+#  spotbugs analiza .class → va dentro de build.
+#
+# ══════════════════════════════════════════════════════════════
+
+jobs:
+
+  # ──────────────────────────────────────────────────────────────
+  # JOB 1 · Build, Tests, JaCoCo y SpotBugs
+  # Corre en paralelo con checkstyle y pmd.
+  # ──────────────────────────────────────────────────────────────
+  build:
+    name: 🏗️ Build · Tests · JaCoCo · SpotBugs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Compilar, testear y medir cobertura (JaCoCo)
+        run: mvn verify --batch-mode --no-transfer-progress
+
+      - name: Analizar bytecode con SpotBugs
+        run: mvn spotbugs:spotbugs --batch-mode --no-transfer-progress
+
+      # Empaqueta solo los archivos necesarios en una estructura limpia
+      - name: Preparar artefactos del build
+        run: |
+          mkdir -p staging-build/jacoco
+          cp target/spotbugsXml.xml            staging-build/spotbugs.xml
+          cp target/site/jacoco/jacoco.csv     staging-build/jacoco.csv
+          cp target/site/jacoco/jacoco.xml     staging-build/jacoco.xml
+          cp -r target/site/jacoco/.           staging-build/jacoco/
+          echo "=== staging-build ==="
+          ls -lh staging-build/
+
+      - name: Subir reportes de Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-build
+          path: staging-build/
+          retention-days: 1
+
+  # ──────────────────────────────────────────────────────────────
+  # JOB 2 · Checkstyle   ← paralelo con build y pmd
+  # Solo analiza archivos .java → no necesita compilación.
+  # ──────────────────────────────────────────────────────────────
+  checkstyle:
+    name: 🎨 Checkstyle · Estilo de Código
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Analizar estilo con Checkstyle (Google Style)
+        run: mvn checkstyle:checkstyle --batch-mode --no-transfer-progress
+
+      - name: Subir reporte Checkstyle
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-checkstyle
+          path: target/checkstyle-result.xml
+          retention-days: 1
+
+  # ──────────────────────────────────────────────────────────────
+  # JOB 3 · PMD   ← paralelo con build y checkstyle
+  # Solo analiza archivos .java → no necesita compilación.
+  # ──────────────────────────────────────────────────────────────
+  pmd:
+    name: 🔍 PMD · Buenas Prácticas
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Analizar código con PMD
+        run: mvn pmd:pmd --batch-mode --no-transfer-progress
+
+      - name: Subir reporte PMD
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-pmd
+          path: target/pmd.xml
+          retention-days: 1
+
+  # ──────────────────────────────────────────────────────────────
+  # JOB 4 · Dashboard   ← espera los 3 jobs anteriores (fan-in)
+  # Descarga todos los reportes, genera el dashboard HTML autónomo
+  # y lo sube como artefacto descargable.
+  # ──────────────────────────────────────────────────────────────
+  dashboard:
+    name: 📊 Dashboard · Generar Artefacto
+    runs-on: ubuntu-latest
+    needs: [build, checkstyle, pmd]
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Descargar reporte Build (JaCoCo + SpotBugs)
+        uses: actions/download-artifact@v4
+        with:
+          name: report-build
+          path: dl/build/
+
+      - name: Descargar reporte Checkstyle
+        uses: actions/download-artifact@v4
+        with:
+          name: report-checkstyle
+          path: dl/
+
+      - name: Descargar reporte PMD
+        uses: actions/download-artifact@v4
+        with:
+          name: report-pmd
+          path: dl/
+
+      # Ensambla la carpeta reports/ con todos los reportes + dashboard
+      - name: Ensamblar directorio de reportes
+        run: |
+          mkdir -p reports/jacoco
+
+          # Herramientas de análisis estático
+          cp dl/checkstyle-result.xml   reports/checkstyle-result.xml
+          cp dl/pmd.xml                 reports/pmd.xml
+          cp dl/build/spotbugs.xml      reports/spotbugs.xml
+
+          # JaCoCo CSV/XML y reporte HTML nativo
+          cp dl/build/jacoco.csv        reports/jacoco.csv
+          cp dl/build/jacoco.xml        reports/jacoco.xml
+          cp -r dl/build/jacoco/.       reports/jacoco/
+
+          echo "=== Contenido de reports/ ==="
+          ls -lh reports/
+
+      # El script lee de reports/ y escribe reports/dashboard.html
+      - name: Generar dashboard HTML autónomo
+        run: python3 .github/scripts/generate_dashboard.py
+
+      - name: Verificar dashboard generado
+        run: |
+          echo "=== dashboard.html ==="
+          ls -lh reports/dashboard.html
+          echo "Tamaño: $(wc -c < reports/dashboard.html) bytes"
+
+      - name: Subir quality-dashboard (descargable desde Actions)
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-dashboard
+          path: reports/
+          retention-days: 30
+          if-no-files-found: error
